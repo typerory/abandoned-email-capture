@@ -35,9 +35,9 @@ function sendToWebhook(email) {
 // Main function to handle email capture
 document.addEventListener('DOMContentLoaded', function() {
     // Replace 'your-form-id' with your actual form ID
-    const form = document.getElementById('your-form-id');
+    const form = document.getElementById('capture-email');
     // Replace 'email-input' with your actual email input field ID
-    const emailInput = document.getElementById('email-input');
+    const emailInput = document.getElementById('qIrbGQT9voND_46dd511113963785fccc');
     
     let emailCaptured = false;
 
