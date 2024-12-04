@@ -1,3 +1,12 @@
+// Function to generate UUID
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0,
+            v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 // Function to validate email format
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -5,18 +14,25 @@ function isValidEmail(email) {
 }
 
 // Function to send data to webhook
-function sendToWebhook(email) {
-    const webhookUrl = 'https://hook.us1.make.com/00s7hvkmlkyz5bs3ynfsvk2dazll92dz'; // Replace with your webhook URL
+function sendToWebhook(email, eventType, sessionId) {
+    const webhookUrl = 'YOUR_WEBHOOK_URL_HERE'; // Replace with your webhook URL
+    
+    const payload = {
+        email: email,
+        timestamp: new Date().toISOString(),
+        captureType: eventType,
+        sessionId: sessionId,
+        sequence: Date.now()
+    };
+
+    console.log('Sending webhook with payload:', payload);
     
     fetch(webhookUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            email: email,
-            timestamp: new Date().toISOString()
-        })
+        body: JSON.stringify(payload)
     })
     .then(response => {
         if (!response.ok) {
@@ -25,34 +41,69 @@ function sendToWebhook(email) {
         return response.json();
     })
     .then(data => {
-        console.log('Success:', data);
+        console.log('Webhook sent successfully:', payload);
     })
     .catch((error) => {
-        console.error('Error:', error);
+        console.error('Error sending webhook:', error);
     });
 }
 
-// Main function to handle email capture
 document.addEventListener('DOMContentLoaded', function() {
-    // Replace 'your-form-id' with your actual form ID
-    const form = document.getElementById('capture-email');
-    // Replace 'email-input' with your actual email input field ID
-    const emailInput = document.getElementById('qIrbGQT9voND_46dd511113963785fccc');
+    const form = document.getElementById('your-form-id');
+    const emailInput = document.getElementById('email-input');
     
-    let emailCaptured = false;
+    // Generate session ID when page loads and store it
+    const currentSessionId = generateUUID();
+    console.log('New session started:', currentSessionId);
+    
+    let lastCapturedEmail = '';
+    let delayTimer = null;
 
-    // Listen for input changes on email field
+    // Function to handle delayed send
+    function handleDelayedSend(email) {
+        if (isValidEmail(email)) {
+            sendToWebhook(email, 'delay', currentSessionId);
+            lastCapturedEmail = email;
+            console.log('Delayed send complete for:', email);
+        }
+    }
+
+    // Track email changes and handle delay
     emailInput.addEventListener('input', function() {
         const email = this.value;
         
-        if (isValidEmail(email) && !emailCaptured) {
-            sendToWebhook(email);
-            emailCaptured = true;
+        // If there's an existing timer, clear it
+        if (delayTimer) {
+            console.log('Clearing existing timer for:', lastCapturedEmail);
+            clearTimeout(delayTimer);
+            delayTimer = null;
+        }
+
+        // If it's a valid email and different from last captured
+        if (isValidEmail(email) && email !== lastCapturedEmail) {
+            console.log('Starting new 10s timer for:', email);
+            delayTimer = setTimeout(() => handleDelayedSend(email), 10000);
         }
     });
 
-    // Reset the emailCaptured flag when the form is submitted
+    // Listen for form submission
     form.addEventListener('submit', function(e) {
-        emailCaptured = false;
+        const email = emailInput.value;
+        
+        // Clear any pending delayed send
+        if (delayTimer) {
+            console.log('Clearing timer due to form submission');
+            clearTimeout(delayTimer);
+            delayTimer = null;
+        }
+
+        // Only send if valid and different from last captured
+        if (isValidEmail(email) && email !== lastCapturedEmail) {
+            sendToWebhook(email, 'submit', currentSessionId);
+            lastCapturedEmail = email;
+            console.log('Form submitted with:', email);
+        } else {
+            console.log('Form submitted but email not sent - either invalid or duplicate:', email);
+        }
     });
 });
